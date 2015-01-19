@@ -126,6 +126,16 @@ class Orbit(object):
                      Representation=Representation, potential=self.potential)
 
     @property
+    def shape(self):
+        """
+        Returns the shape of the orbit, without the implicit dimensionality axis=0
+        (assumed to be 3D in position and velocity).
+
+        """
+
+        return self.pos.shape[1:]
+
+    @property
     def orbit_type(self):
         # TODO: figure out if tube or box (.orbit_type)
         pass
