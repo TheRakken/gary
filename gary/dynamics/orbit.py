@@ -12,6 +12,9 @@ import astropy.coordinates as coord
 from astropy import log as logger
 import numpy as np
 
+# Project
+from ..coordinates import velocity_transforms as vtrans
+
 __all__ = ['Orbit']
 
 def readonly_property(obj, name, value):
@@ -25,12 +28,16 @@ class Orbit(object):
     Parameters
     ----------
     pos : array_like, :class:`~astropy.units.Quantity`
-        Array of positions.
+        Array of positions. axis=0 is assumed to be the coordinate axis and should have
+        length=3. axis=1 is assumed to be the time axis, but is optional (for initial
+        conditions). Any further axes should be handled properly.
     vel : array_like, :class:`~astropy.units.Quantity`
-        Array of velocities.
-    t : array_like, :class:`~astropy.units.Quantity`
+        Array of velocities. axis=0 is assumed to be the coordinate axis and should have
+        length=3. axis=1 is assumed to be the time axis, but is optional (for initial
+        conditions). Any further axes should be handled properly.
+    t : array_like, :class:`~astropy.units.Quantity` (optional)
         Array of times.
-    units : iterable
+    unitsys : iterable (optional)
         Specify the unit system of the input orbit. This must be a tuple or iterable
         of :class:`~astropy.units.Unit` objects that define a unit system
     representation : :class:`~astropy.coordinates.BaseRepresentation` (optional)
@@ -38,14 +45,12 @@ class Orbit(object):
         this is assumed to be :class:`~astropy.coordinates.CartesianRepresentation`
         so that the input coordinates are Cartesian, but this can be any of the
         valid Astropy representations.
-    t_axis : int (optional)
-        The index of the axis that represents the timesteps of the orbit.
     potential : :class:`~gary.potential.Potential` (optional)
         The potential that the orbit was integrated in.
 
     """
 
-    def __init__(self, pos, vel, t, units,
+    def __init__(self, pos, vel, t=None, unitsys=None,
                  Representation=coord.CartesianRepresentation,
                  t_axis=1, potential=None):
 
@@ -61,31 +66,49 @@ class Orbit(object):
             raise ValueError("Position and velocity must have the same shape "
                              " ({} vs. {})".format(pos.shape, vel.shape))
 
-        if not hasattr(t, "unit") or t.size != pos.shape[t_axis]:
+        if t is not None and not hasattr(t, "unit") or t.size != pos.shape[1]:
             raise TypeError("Input time must be an Astropy Quantity object and match "
                             "the size of the time axis in position and velocity.")
 
         self.pos = pos
         self.vel = vel
         self.t = t
+        self.unitsys = unitsys
         self.Representation = Representation
+        self.potential = potential
 
         for i,name in enumerate(Representation.attr_classes.keys()):
             readonly_property(self, name, self.pos[i])
             readonly_property(self, "v"+name, self.vel[i])
 
-    def represent_as(self, representation):
+    def represent_as(self, Representation):
         """
         Transform the representation or coordinate system of the orbit, for example,
         from Cartesian to Spherical.
 
         Parameters
         ----------
-        representation : :class:`~astropy.coordinates.BaseRepresentation`
-            The output representation.
+        Representation : :class:`~astropy.coordinates.BaseRepresentation`
+            The output representation class.
         """
-        pass
 
+        # first transform the position
+        new_pos = self.Representation(self.pos).represent_as(Representation)
+
+        # now find the function to transform the velocity
+        _func_name = "{}_to_{}".format(self.Representation.get_name(),
+                                       Representation.get_name())
+        v_func = getattr(vtrans, _func_name)
+        new_vel = v_func(self.pos, self.vel)
+
+        return Orbit(pos=new_pos, vel=new_vel, t=self.t, unitsys=self.unitsys,
+                     Representation=Representation, potential=self.potential)
+
+    def __repr__(self):
+        return "<Orbit"
+
+    def __str__(self):
+        pass
 
     def __getitem__(self, slyce):
         pass
