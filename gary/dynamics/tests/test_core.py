@@ -19,6 +19,7 @@ from astropy import log as logger
 # Project
 from ..core import *
 from ..plot import plot_orbits
+from ..orbit import Orbit
 from ...potential import LogarithmicPotential
 from ...units import galactic
 
@@ -28,21 +29,24 @@ plot_path = "plots/tests/dynamics"
 if not os.path.exists(plot_path):
     os.makedirs(plot_path)
 
-# ----------------------------------------------------------------------------
-
 def test_angular_momentum():
 
-    assert np.allclose(angular_momentum([1.,0.,0.],[0.,0.,1.]),
-                       [0., -1, 0])
-    assert np.allclose(angular_momentum([1.,0.,0.],[0.,1.,0.]),
-                       [0., 0, 1])
-    assert np.allclose(angular_momentum([0.,1.,0.],[0.,0.,1.]),
-                       [1., 0, 0])
+    qs = [[1.,0.,0.],[1.,0.,0.],[0.,1.,0.]]
+    ps = [[0.,0.,1.],[0.,1.,0.],[0.,0.,1.]]
+    Ls = [[0., -1, 0],[0.,0.,1.],[1.,0.,0.]]
 
-    q = [1.,0,0]*u.kpc
-    p = [0,200.,0]*u.pc/u.Myr
-    np.testing.assert_allclose(angular_momentum(q,p).to(u.kpc**2/u.Myr),
-                               [0,0,0.2]*u.kpc**2/u.Myr)
+    for q,p,L in zip(qs,ps,Ls):
+        L1 = angular_momentum(pos=q*u.dimensionless_unscaled,
+                              vel=p*u.dimensionless_unscaled)
+        np.testing.assert_allclose(L1, L)
+
+        L2 = angular_momentum(pos=q*u.kpc,
+                              vel=p*u.km/u.s)
+        np.testing.assert_allclose(L2, L)
+
+        orbit = Orbit(pos=q*u.kpc, vel=p*u.km/u.s)
+        L3 = angular_momentum(orbit)
+        np.testing.assert_allclose(L3, L)
 
 # ----------------------------------------------------------------------------
 

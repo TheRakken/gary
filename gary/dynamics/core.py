@@ -9,10 +9,14 @@ __author__ = "adrn <adrn@astro.columbia.edu>"
 # Third-party
 import numpy as np
 from astropy import log as logger
+import astropy.coordinates as coord
+
+# Project
+from .orbit import Orbit
 
 __all__ = ['angular_momentum', 'classify_orbit', 'align_circulation_with_z']
 
-def angular_momentum(q, p):
+def angular_momentum(orbit=None, **kwargs):
     r"""
     Compute the angular momentum vector(s) of a single or array of positions
     and conjugate momenta, ``q`` and ``p``.
@@ -24,19 +28,21 @@ def angular_momentum(q, p):
     Examples
     --------
 
-        >>> import numpy as np
         >>> import astropy.units as u
-        >>> q = np.array([1., 0, 0]) * u.au
-        >>> p = np.array([0, 2*np.pi, 0]) * u.au/u.yr
-        >>> angular_momentum(q, p)
+        >>> import gary.dynamics as gdyn
+        >>> orb = gdyn.Orbit(pos=[1., 0, 0])*u.au, vel=[0, 2*np.pi, 0]*u.au/u.yr)
+        >>> gdyn.angular_momentum(orb)
         <Quantity [ 0.        , 0.        , 6.28318531] AU2 / yr>
 
     Parameters
     ----------
-    q : array_like, :class:`~astropy.units.Quantity`
-        Array of positions.
-    p : array_like, :class:`~astropy.units.Quantity`
-        Array of momenta, or, velocities if working in per-mass units.
+    orbit : :class:`~gary.dynamics.Orbit`
+        Orbit instance.
+    **keyword_arguments
+        Instead of passing in an `~gary.dynamics.Orbit`, it is also possible to pass in
+        a set of keyword arguments that fully specifies an `~gary.dynamics.Orbit` instance.
+        For example, you may pass in ``pos=``, ``vel=``, and (optionally) a representation
+        class.
 
     Returns
     -------
@@ -44,12 +50,17 @@ def angular_momentum(q, p):
         Array of angular momentum vectors.
 
     """
-    try:
-        return np.cross(q,p) * q.unit * p.unit
-    except AttributeError:  # q,p are just array's
-        return np.cross(q,p)
+    if orbit is None:
+        orbit = Orbit(**kwargs)
 
-def classify_orbit(w):
+    cart_orbit = orbit.represent_as(coord.CartesianRepresentation)
+
+    L = np.cross(cart_orbit.pos, cart_orbit.vel,
+                 axisa=0, axisb=0, axisc=0) * cart_orbit.pos.unit * cart_orbit.vel.unit
+
+    return L
+
+def classify_orbit(orbit=None, **kwargs):
     """
     Determine whether an orbit or series of orbits is a Box or Tube orbit by
     figuring out whether there is a change of sign of the angular momentum
@@ -61,10 +72,13 @@ def classify_orbit(w):
 
     Parameters
     ----------
-    w : array_like
-        Array of phase-space positions. Accepts 2D or 3D arrays. If 2D, assumes
-        this is a single orbit. If 3D, assumes that this is a collection of orbits,
-        where `axis=0` is the time axis, and `axis=1` are the different orbits.
+    orbit : :class:`~gary.dynamics.Orbit`
+        Orbit instance.
+    **keyword_arguments
+        Instead of passing in an `~gary.dynamics.Orbit`, it is also possible to pass in
+        a set of keyword arguments that fully specifies an `~gary.dynamics.Orbit` instance.
+        For example, you may pass in ``pos=``, ``vel=``, and (optionally) a representation
+        class.
 
     Returns
     -------
@@ -73,7 +87,22 @@ def classify_orbit(w):
         the axes of the input orbit. For a single orbit, will return a
         1D array, but for multiple orbits, the shape will be (len(w), 3).
 
+    Examples
+    --------
+
+        >>>
+        >>>
+
     """
+
+    if not isinstance(orbit, Orbit):
+        pass
+
+    else:
+        logger.warning("Deprecation notice: Passing in an array is no longer supported. "
+                       "Use an Orbit instance instead.")
+        w = orbit
+
     # get angular momenta
     ndim = w.shape[-1]
     Ls = angular_momentum(w[...,:ndim//2], w[...,ndim//2:])
