@@ -25,6 +25,22 @@ def angular_momentum(orbit=None, **kwargs):
 
         \boldsymbol{L} = \boldsymbol{q} \times \boldsymbol{p}
 
+    Parameters
+    ----------
+    orbit : :class:`~gary.dynamics.Orbit`
+        Orbit instance.
+    **keyword_arguments
+        Instead of passing in an `~gary.dynamics.Orbit`, it is also possible to pass in
+        a set of keyword arguments that fully specifies an `~gary.dynamics.Orbit` instance.
+        For example, you may pass in ``pos=``, ``vel=``, and (optionally) a representation
+        class. Any of the arguments accepted by the `~gary.dynamics.Orbit` initializer are
+        also accepted here.
+
+    Returns
+    -------
+    L : :class:`~astropy.units.Quantity`
+        Array of angular momentum vectors.
+
     Examples
     --------
 
@@ -34,27 +50,12 @@ def angular_momentum(orbit=None, **kwargs):
         >>> gdyn.angular_momentum(orb)
         <Quantity [ 0.        , 0.        , 6.28318531] AU2 / yr>
 
-    Parameters
-    ----------
-    orbit : :class:`~gary.dynamics.Orbit`
-        Orbit instance.
-    **keyword_arguments
-        Instead of passing in an `~gary.dynamics.Orbit`, it is also possible to pass in
-        a set of keyword arguments that fully specifies an `~gary.dynamics.Orbit` instance.
-        For example, you may pass in ``pos=``, ``vel=``, and (optionally) a representation
-        class.
-
-    Returns
-    -------
-    L : :class:`numpy.ndarray`, :class:`~astropy.units.Quantity`
-        Array of angular momentum vectors.
-
     """
+
     if orbit is None:
         orbit = Orbit(**kwargs)
 
     cart_orbit = orbit.represent_as(coord.CartesianRepresentation)
-
     L = np.cross(cart_orbit.pos, cart_orbit.vel,
                  axisa=0, axisb=0, axisc=0) * cart_orbit.pos.unit * cart_orbit.vel.unit
 
@@ -78,7 +79,8 @@ def classify_orbit(orbit=None, **kwargs):
         Instead of passing in an `~gary.dynamics.Orbit`, it is also possible to pass in
         a set of keyword arguments that fully specifies an `~gary.dynamics.Orbit` instance.
         For example, you may pass in ``pos=``, ``vel=``, and (optionally) a representation
-        class.
+        class. Any of the arguments accepted by the `~gary.dynamics.Orbit` initializer are
+        also accepted here.
 
     Returns
     -------
@@ -95,35 +97,23 @@ def classify_orbit(orbit=None, **kwargs):
 
     """
 
-    if not isinstance(orbit, Orbit):
-        pass
+    if orbit is None:
+        orbit = Orbit(**kwargs)
 
-    else:
-        logger.warning("Deprecation notice: Passing in an array is no longer supported. "
-                       "Use an Orbit instance instead.")
-        w = orbit
+    # cartesian representation of orbit
+    cart_orbit = orbit.represent_as(coord.CartesianRepresentation)
 
     # get angular momenta
-    ndim = w.shape[-1]
-    Ls = angular_momentum(w[...,:ndim//2], w[...,ndim//2:])
-
-    # if only 2D, add another empty axis
-    if w.ndim == 2:
-        single_orbit = True
-        ntimesteps,ndim = w.shape
-        w = w.reshape(ntimesteps,1,ndim)
-    else:
-        single_orbit = False
-
-    ntimes,norbits,ndim = w.shape
+    Ls = angular_momentum(cart_orbit)
 
     # initial angular momentum
     L0 = Ls[0]
 
     # see if at any timestep the sign has changed
-    loop = np.ones((norbits,3))
+    loop = np.ones_like((3,) + cart_orbit.shape)
     for ii in range(3):
-        cnd = (np.sign(L0[...,ii]) != np.sign(Ls[1:,...,ii])) | \
+        # TODO: I stopped here, need to figure out how to do this with the new shape of L
+        cnd = (np.sign(L0[ii]) != np.sign(Ls[ii,1:])) | \
               (np.abs(Ls[1:,...,ii]) < 1E-14)
 
         ix = np.atleast_1d(np.any(cnd, axis=0))
