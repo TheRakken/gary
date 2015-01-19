@@ -39,3 +39,6 @@ def test_api():
         assert hasattr(orbit, 'v'+nm)
 
     new_orbit = orbit.represent_as(coord.PhysicsSphericalRepresentation)
+    for nm in ['r','phi','theta']:
+        assert hasattr(new_orbit, nm)
+        assert hasattr(new_orbit, 'v'+nm)

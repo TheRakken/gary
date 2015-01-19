@@ -27,11 +27,11 @@ class Orbit(object):
 
     Parameters
     ----------
-    pos : array_like, :class:`~astropy.units.Quantity`
+    pos : :class:`~astropy.units.Quantity`, :class:`~astropy.coordinates.BaseRepresentation`
         Array of positions. axis=0 is assumed to be the coordinate axis and should have
         length=3. axis=1 is assumed to be the time axis, but is optional (for initial
         conditions). Any further axes should be handled properly.
-    vel : array_like, :class:`~astropy.units.Quantity`
+    vel : :class:`~astropy.units.Quantity`, :class:`~astropy.coordinates.BaseRepresentation`
         Array of velocities. axis=0 is assumed to be the coordinate axis and should have
         length=3. axis=1 is assumed to be the time axis, but is optional (for initial
         conditions). Any further axes should be handled properly.
@@ -54,19 +54,28 @@ class Orbit(object):
                  Representation=coord.CartesianRepresentation,
                  t_axis=1, potential=None):
 
-        if not hasattr(pos, "unit") or pos.shape[0] != 3:
-            raise TypeError("Input position must be an Astropy Quantity object "
-                            "with an axis=0 of length 3 (e.g., x,y,z or rho,phi,z).")
+        # pos might be a Representation instance -- e.g., spherical coordinates
+        if isinstance(pos, coord.BaseRepresentation):
+            pos = pos.represent_as(Representation)
+            if isinstance(pos, coord.CartesianRepresentation):
+                pos = pos.xyz
+            else:
+                pos = [getattr(pos,nm) for nm in pos.attr_classes.keys()]
 
-        if not hasattr(vel, "unit") or vel.shape[0] != 3:
-            raise TypeError("Input velocity must be an Astropy Quantity object "
-                            "with an axis=0 of length 3 (e.g., vx,vy,vz).")
+        if len(pos) != 3:
+            raise TypeError("Input position must have length 3 over the 0th axis "
+                            "(e.g., x,y,z or rho,phi,z).")
 
-        if pos.shape != vel.shape:
-            raise ValueError("Position and velocity must have the same shape "
-                             " ({} vs. {})".format(pos.shape, vel.shape))
+        if len(vel) != 3:
+            raise TypeError("Input velocity must have length 3 over the 0th axis "
+                            "(e.g., vx,vy,vz or vlon,vlat,vr).")
 
-        if t is not None and not hasattr(t, "unit") or t.size != pos.shape[1]:
+        for i in range(3):
+            if pos[i].shape != vel[i].shape:
+                raise ValueError("Position and velocity must have the same shape "
+                                 " ({} vs. {})".format(pos[i].shape, vel[i].shape))
+
+        if t is not None and not hasattr(t, "unit") or t.size != len(pos[0]):
             raise TypeError("Input time must be an Astropy Quantity object and match "
                             "the size of the time axis in position and velocity.")
 
@@ -93,7 +102,7 @@ class Orbit(object):
         """
 
         # first transform the position
-        new_pos = self.Representation(self.pos).represent_as(Representation)
+        new_pos = self.Representation(*self.pos).represent_as(Representation)
 
         # now find the function to transform the velocity
         _func_name = "{}_to_{}".format(self.Representation.get_name(),
