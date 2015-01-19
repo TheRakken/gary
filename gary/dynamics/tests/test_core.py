@@ -48,6 +48,21 @@ def test_angular_momentum():
         L3 = angular_momentum(orbit)
         np.testing.assert_allclose(L3, L)
 
+    # now try with arrays
+    q,p,L = map(np.transpose, map(np.array, (qs,ps,Ls)))
+    L1 = angular_momentum(pos=q*u.dimensionless_unscaled,
+                          vel=p*u.dimensionless_unscaled)
+
+    np.testing.assert_allclose(L1, L)
+
+    L2 = angular_momentum(pos=q*u.kpc,
+                          vel=p*u.km/u.s)
+    np.testing.assert_allclose(L2, L)
+
+    orbit = Orbit(pos=q*u.kpc, vel=p*u.km/u.s)
+    L3 = angular_momentum(orbit)
+    np.testing.assert_allclose(L3, L)
+
 # ----------------------------------------------------------------------------
 
 def make_known_orbit(x, vx, potential, name):
