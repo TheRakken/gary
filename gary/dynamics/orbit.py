@@ -130,13 +130,7 @@ class Orbit(object):
         # TODO: figure out if tube or box (.orbit_type)
         pass
 
-    def angular_momentum(self):
-        pass
-
     def kinetic_energy(self):
-        pass
-
-    def potential_energy(self):
         pass
 
     def total_energy(self):
