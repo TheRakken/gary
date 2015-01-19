@@ -75,7 +75,7 @@ class Orbit(object):
                 raise ValueError("Position and velocity must have the same shape "
                                  " ({} vs. {})".format(pos[i].shape, vel[i].shape))
 
-        if t is not None and not hasattr(t, "unit") or t.size != len(pos[0]):
+        if t is not None and (not hasattr(t, "unit") or t.size != len(pos[0])):
             raise TypeError("Input time must be an Astropy Quantity object and match "
                             "the size of the time axis in position and velocity.")
 
@@ -90,6 +90,15 @@ class Orbit(object):
             readonly_property(self, name, self.pos[i])
             readonly_property(self, "v"+name, self.vel[i])
 
+    def __repr__(self):
+        return "<Orbit"
+
+    def __str__(self):
+        pass
+
+    def __getitem__(self, slyce):
+        pass
+
     def represent_as(self, Representation):
         """
         Transform the representation or coordinate system of the orbit, for example,
@@ -100,6 +109,9 @@ class Orbit(object):
         Representation : :class:`~astropy.coordinates.BaseRepresentation`
             The output representation class.
         """
+
+        if self.Representation == Representation:
+            return self
 
         # first transform the position
         new_pos = self.Representation(*self.pos).represent_as(Representation)
@@ -112,21 +124,6 @@ class Orbit(object):
 
         return Orbit(pos=new_pos, vel=new_vel, t=self.t, unitsys=self.unitsys,
                      Representation=Representation, potential=self.potential)
-
-    def __repr__(self):
-        return "<Orbit"
-
-    def __str__(self):
-        pass
-
-    def __getitem__(self, slyce):
-        pass
-
-    # TODO: for each representation shorthand, add an attribute to get out
-    #       a new Orbit with that representation
-
-    # TODO: should have attributes for whatever representation it's in,
-    #       and also same with v in front for velocities
 
     @property
     def orbit_type(self):
