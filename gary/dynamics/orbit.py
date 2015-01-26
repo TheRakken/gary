@@ -102,6 +102,18 @@ class Orbit(object):
                      t=self.t[slyce], unitsys=self.unitsys,
                      Representation=self.Representation, potential=self.potential)
 
+    def __copy__(self):
+        # TODO:
+        pass
+
+    def __deepcopy__(self):
+        # TODO:
+        pass
+
+    def copy(self, deep=False):
+        # TODO:
+        pass
+
     def represent_as(self, Representation):
         """
         Transform the representation or coordinate system of the orbit, for example,
