@@ -42,3 +42,13 @@ def test_api():
     for nm in ['r','phi','theta']:
         assert hasattr(new_orbit, nm)
         assert hasattr(new_orbit, 'v'+nm)
+
+def test_creation():
+    t = np.linspace(0., 25., 1000)
+    pos = np.vstack((np.cos(t), np.sin(t), np.cos(0.5*t))) * u.kpc
+    vel = 1000.*np.vstack((-np.sin(t), np.cos(t), -0.5*np.sin(0.5*t))) * u.km/u.s
+    o = Orbit(pos=pos, vel=vel)
+    o = Orbit(pos=pos, vel=vel, t=t*u.Myr)
+    o = Orbit(pos=pos, vel=vel, t=t*u.Myr, unitsys=(u.Msun, u.Myr, u.kpc))
+
+    print(o[:250,np.newaxis].pos.shape)
