@@ -97,7 +97,10 @@ class Orbit(object):
         pass
 
     def __getitem__(self, slyce):
-
+        pv_slyce = (slice(None,None,None),) + slyce
+        return Orbit(pos=self.pos[pv_slyce], vel=self.vel[pv_slyce],
+                     t=self.t[slyce], unitsys=self.unitsys,
+                     Representation=self.Representation, potential=self.potential)
 
     def represent_as(self, Representation):
         """
