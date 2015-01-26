@@ -158,7 +158,8 @@ def align_circulation_with_z(orbit=None, circulation=None, **kwargs):
     -------
     new_orbit : :class:`~gary.dynamics.Orbit`
         A copy of the input `~gary.dynamics.Orbit` with the circulation
-        aligned with the z axis.
+        aligned with the z axis. The representation of the output orbit
+        will always be Cartesian.
     """
 
     if orbit is None:
@@ -167,30 +168,42 @@ def align_circulation_with_z(orbit=None, circulation=None, **kwargs):
     if circulation is None:
         circulation = classify_orbit(orbit)
 
-    # TODO: stopped here because need to figure out better way to handle 1 vs many orbits
-    if circulation.ndim == 1:
-        pass
+    orbit = orbit.represent_as(coord.CartesianRepresentation)
 
-    new_w = w.copy()
-    for ix in range(len(loop_bit)):
-        if loop_bit[ix,2] == 1 or np.all(loop_bit[ix] == 0):
+    if orbit.norbits == 1:
+        issingle = True
+        orbit = orbit[...,np.newaxis]
+    else:
+        issingle = False
+
+    new_pos = orbit.pos.copy()
+    new_vel = orbit.vel.copy()
+    for ix in range(orbit.norbits):
+        if circulation[2,ix] == 1 or np.all(circulation[:,ix] == 0):
             # already circulating about z or box orbit
             continue
 
-        if sum(loop_bit[ix]) > 1:
-            logger.warning("Circulation about x and y axes - are you sure the orbit has been "
-                           "integrated for long enough?")
+        if sum(circulation[:,ix]) > 1:
+            raise ValueError("Circulation about x and y axes - are you sure the "
+                             "orbit has been integrated for long enough?")
 
-        if loop_bit[ix,0] == 1:
+        if circulation[0,ix] == 1:
             circ = 0
-        elif loop_bit[ix,1] == 1:
+        elif circulation[1,ix] == 1:
             circ = 1
         else:
             raise RuntimeError("Should never get here...")
 
-        new_w[:,ix,circ] = w[:,ix,2]
-        new_w[:,ix,2] = w[:,ix,circ]
-        new_w[:,ix,circ+3] = w[:,ix,5]
-        new_w[:,ix,5] = w[:,ix,circ+3]
+        new_pos[circ,:,ix] = orbit.pos[2,:,ix]
+        new_pos[2,:,ix] = orbit.pos[circ,:,ix]
+        new_vel[circ,:,ix] = orbit.vel[2,:,ix]
+        new_vel[2,:,ix] = orbit.vel[circ,:,ix]
 
-    return new_w.reshape(orig_shape)
+    new_orbit = orbit.copy()
+    new_orbit.pos = new_pos
+    new_orbit.vel = new_vel
+
+    if issingle:
+        new_orbit = new_orbit[...,0]
+
+    return new_orbit
