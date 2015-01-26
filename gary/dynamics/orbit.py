@@ -23,7 +23,7 @@ def readonly_property(obj, name, value):
 
 class Orbit(object):
     """
-    Represents the orbit of an object.
+    Represents a 6D orbit.
 
     Parameters
     ----------
