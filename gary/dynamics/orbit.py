@@ -139,6 +139,13 @@ class Orbit(object):
         return self.pos.shape[1:]
 
     @property
+    def norbits(self):
+        if len(self.pos.shape) == 2:
+            return 1
+        else:
+            return self.pos.shape[-1]
+
+    @property
     def orbit_type(self):
         # TODO: figure out if tube or box (.orbit_type)
         pass
