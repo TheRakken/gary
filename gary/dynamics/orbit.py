@@ -97,7 +97,7 @@ class Orbit(object):
         pass
 
     def __getitem__(self, slyce):
-        pass
+
 
     def represent_as(self, Representation):
         """
