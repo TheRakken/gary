@@ -30,6 +30,7 @@ if not os.path.exists(plot_path):
     os.makedirs(plot_path)
 
 def test_angular_momentum():
+    # TODO: need to try different representations...
 
     qs = [[1.,0.,0.],[1.,0.,0.],[0.,1.,0.]]
     ps = [[0.,0.,1.],[0.,1.,0.],[0.,0.,1.]]
@@ -63,37 +64,48 @@ def test_angular_momentum():
     L3 = angular_momentum(orbit)
     np.testing.assert_allclose(L3, L)
 
+    # try with multiple orbits
+    orbit = Orbit(pos=np.random.random(size=(3,1000,5))*u.kpc,
+                  vel=np.random.random(size=(3,1000,5))*u.km/u.s)
+    L1 = angular_momentum(orbit)
+    assert L1.shape == (3,1000,5)
+
 # ----------------------------------------------------------------------------
 
-def make_known_orbit(x, vx, potential, name):
-    # See Binney & Tremaine (2008) Figure 3.8 and 3.9
-    E = -0.337
-    y = 0.
-    vy = np.sqrt(2*(E - potential.value([x,y,0.])))[0]
-
-    w = [x,y,0.,vx,vy,0.]
-    t,ws = potential.integrate_orbit(w, dt=0.05, nsteps=10000)
-    fig = plot_orbits(ws, linestyle='none', alpha=0.1)
-    fig.savefig(os.path.join(plot_path, "{}.png".format(name)))
-
-    return ws
-
 def test_classify_orbit():
+    # TODO: need to try different representations...
+    t = np.linspace(0, 10., 100)
 
-    potential = LogarithmicPotential(v_c=1., r_h=0.14, q1=1., q2=0.9, q3=1.,
-                                     units=galactic)
-    ws = make_known_orbit(0.5, 0., potential, "loop")
-    loop = classify_orbit(ws)
+    # loopy orbit
+    xyz = np.vstack((np.cos(t), np.sin(t), t*0.)) * u.au
+    vxyz = np.vstack((-np.sin(t), np.cos(t), t*0.)) * u.au/u.yr
+    loop = classify_orbit(pos=xyz, vel=vxyz)
     assert loop.sum() == 1
-
-    ws = make_known_orbit(0., 1.5, potential, "box")
-    loop = classify_orbit(ws)
-    assert loop.sum() == 0
-
-    # try also for a single orbit
-    loop = classify_orbit(ws[:,0])
     assert loop.shape == (3,)
+
+    # two loopy orbits
+    xyz2 = np.vstack((np.cos(2*t), t*0., np.sin(2*t))) * u.au
+    vxyz2 = np.vstack((-2*np.sin(2*t), t*0., 2*np.cos(2*t))) * u.au/u.yr
+
+    pos = np.zeros((3,100,2))
+    pos[...,0] = xyz.value
+    pos[...,1] = xyz2.value
+    pos = pos*xyz.unit
+
+    vel = np.zeros((3,100,2))
+    vel[...,0] = vxyz.value
+    vel[...,1] = vxyz2.value
+    vel = vel*vxyz.unit
+    loop = classify_orbit(pos=pos, vel=vel)
+    np.testing.assert_allclose(loop, np.array([[0,0],[0,1],[1,0]]))
+
+    # box-like orbit
+    xyz = np.vstack((np.cos(t), np.cos(2*t + 0.5), np.cos(4*t + 1.5))) * u.au
+    vxyz = -np.vstack((np.sin(t), 2*np.sin(2*t + 0.5), 4*np.sin(4*t + 1.5))) * u.au/u.yr
+    loop = classify_orbit(pos=xyz, vel=vxyz)
+
     assert loop.sum() == 0
+    assert loop.shape == (3,)
 
 # ----------------------------------------------------------------------------
 

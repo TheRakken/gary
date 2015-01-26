@@ -46,7 +46,7 @@ def angular_momentum(orbit=None, **kwargs):
 
         >>> import astropy.units as u
         >>> import gary.dynamics as gdyn
-        >>> orb = gdyn.Orbit(pos=[1., 0, 0])*u.au, vel=[0, 2*np.pi, 0]*u.au/u.yr)
+        >>> orb = gdyn.Orbit(pos=[1., 0, 0]*u.au, vel=[0, 2*np.pi, 0]*u.au/u.yr)
         >>> gdyn.angular_momentum(orb)
         <Quantity [ 0.        , 0.        , 6.28318531] AU2 / yr>
 
@@ -92,8 +92,15 @@ def classify_orbit(orbit=None, **kwargs):
     Examples
     --------
 
-        >>>
-        >>>
+        >>> import astropy.units as u
+        >>> import gary.dynamics as gdyn
+        >>> t = np.linspace(0., 10., 100)
+        >>> xyz = np.vstack((np.cos(t), np.sin(t), t*0.)) * u.au
+        >>> vxyz = np.vstack((-np.sin(t), np.cos(t), t*0.)) * u.au/u.yr
+        >>> orb = gdyn.Orbit(pos=xyz, vel=vxyz)
+        >>> gdyn.classify_orbit(orb)
+        np.array([0,0,1])
+
 
     """
 
@@ -101,27 +108,33 @@ def classify_orbit(orbit=None, **kwargs):
         orbit = Orbit(**kwargs)
 
     # cartesian representation of orbit
-    cart_orbit = orbit.represent_as(coord.CartesianRepresentation)
+    # cart_orbit = orbit.represent_as(coord.CartesianRepresentation)
 
     # get angular momenta
-    Ls = angular_momentum(cart_orbit)
+    Ls = angular_momentum(orbit)
 
     # initial angular momentum
-    L0 = Ls[0]
+    L0 = Ls[:,0]
 
     # see if at any timestep the sign has changed
-    loop = np.ones_like((3,) + cart_orbit.shape)
+    if len(orbit.shape) > 1:
+        loop = np.ones((3,) + orbit.shape[1:])
+        single_orbit = False
+    else:
+        loop = np.ones((3,1))
+        single_orbit = True
+
     for ii in range(3):
         # TODO: I stopped here, need to figure out how to do this with the new shape of L
         cnd = (np.sign(L0[ii]) != np.sign(Ls[ii,1:])) | \
-              (np.abs(Ls[1:,...,ii]) < 1E-14)
+              (np.abs(Ls[ii,1:].value) < 1E-13)
 
         ix = np.atleast_1d(np.any(cnd, axis=0))
-        loop[ix,ii] = 0
+        loop[ii][ix] = 0
 
     loop = loop.astype(int)
     if single_orbit:
-        return loop.reshape((ndim//2,))
+        return loop.reshape((3,))
     else:
         return loop
 
